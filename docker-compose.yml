@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      bash -c "python manage.py migrate && 
+      python manage.py init_db && 
+      python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - EXTERNAL_DB_NAME=${EXTERNAL_DB_NAME}
+      - EXTERNAL_DB_USER=${EXTERNAL_DB_USER}
+      - EXTERNAL_DB_PASSWORD=${EXTERNAL_DB_PASSWORD}
+      - EXTERNAL_DB_HOST=${EXTERNAL_DB_HOST}
+      - EXTERNAL_DB_PORT=${EXTERNAL_DB_PORT}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - FIREBASE_CREDENTIALS=${FIREBASE_CREDENTIALS}
+      - GRAPHQL_ENDPOINT=${GRAPHQL_ENDPOINT}
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
