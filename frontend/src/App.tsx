@@ -7,6 +7,7 @@ import { ProtectedRoute } from './shared/components/Layout/ProtectedRoute';
 const LogisticaRoutes = lazy(() => import('./modules/logistica/routes/LogisticaRoutes'));
 const Layout = lazy(() => import('./shared/components/Layout/Layout'));
 const LoginPage = lazy(() => import('./modules/auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('./modules/auth/pages/RegisterPage'));
 
 const FullScreenLoader = () => (
   <div className="flex h-screen w-full items-center justify-center bg-gray-50">
@@ -50,6 +51,7 @@ export const App: React.FC = () => {
             <Routes>
               {/* Rutas Públicas (Auth) */}
               <Route path="/auth/login" element={<LoginPage />} />
+              <Route path="/auth/register" element={<RegisterPage />} />
 
               {/* Rutas Protegidas (Dashboard) */}
               <Route path="/" element={<ProtectedRoute />}>

@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, Circle, CircleMarker, Popup, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, Clock, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../auth/store/useAuthStore';
+
+// Declaramos que window.google existe (inyectado en index.html)
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 // Coordenadas Reales Extraídas del Backend (excel_data.py - La Paz)
 const PARADAS_OPTIMIZADAS = [
@@ -15,19 +22,72 @@ const PARADAS_OPTIMIZADAS = [
   { id: 7, nombre: 'Cruce de Villas', lat: -16.4957719, lng: -68.1168489, status: 'pendiente', hora: '12:30 PM (Est)' }
 ];
 
-const RUTA_LATLNG: [number, number][] = PARADAS_OPTIMIZADAS.map(p => [p.lat, p.lng]);
+const RUTA_LATLNG_FALLBACK: [number, number][] = PARADAS_OPTIMIZADAS.map(p => [p.lat, p.lng]);
 const VEHICULO_ACTUAL: [number, number] = [-16.5330000, -68.0600000]; // En tránsito entre Chasquipampa y Achumani
 
 export const RutasMapaPage: React.FC = () => {
   const user = useAuthStore(state => state.user);
   const [selectedStop, setSelectedStop] = useState(3);
+  const [routePath, setRoutePath] = useState<[number, number][]>([]);
 
-  // Título contextual según el rol (como solicitó el usuario)
+  // Efecto para calcular la ruta exacta por calles usando Google Maps API
+  useEffect(() => {
+    // Retrasamos un poco la llamada para asegurar que el script de Google se cargó en index.html
+    const fetchGoogleRoute = () => {
+      if (!window.google || !window.google.maps) {
+        console.warn("Google Maps no está cargado. Usando fallback de líneas rectas.");
+        setRoutePath(RUTA_LATLNG_FALLBACK);
+        return;
+      }
+
+      const directionsService = new window.google.maps.DirectionsService();
+      
+      const origin = { lat: PARADAS_OPTIMIZADAS[0].lat, lng: PARADAS_OPTIMIZADAS[0].lng };
+      const destination = { lat: PARADAS_OPTIMIZADAS[PARADAS_OPTIMIZADAS.length - 1].lat, lng: PARADAS_OPTIMIZADAS[PARADAS_OPTIMIZADAS.length - 1].lng };
+      
+      const waypoints = PARADAS_OPTIMIZADAS.slice(1, -1).map(p => ({
+        location: { lat: p.lat, lng: p.lng },
+        stopover: true
+      }));
+
+      directionsService.route(
+        {
+          origin,
+          destination,
+          waypoints,
+          optimizeWaypoints: true, // Habilita el algoritmo TSP de Google
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (result: any, status: string) => {
+          if (status === window.google.maps.DirectionsStatus.OK && result) {
+            // Unimos todos los puntos "overview_path" para dibujar la polilínea hiperrealista
+            const path: [number, number][] = [];
+            result.routes[0].legs.forEach((leg: any) => {
+              leg.steps.forEach((step: any) => {
+                step.path.forEach((p: any) => {
+                  path.push([p.lat(), p.lng()]);
+                });
+              });
+            });
+            setRoutePath(path);
+          } else {
+            console.error(`Error de Google Maps: ${status}`);
+            setRoutePath(RUTA_LATLNG_FALLBACK);
+          }
+        }
+      );
+    };
+
+    setTimeout(fetchGoogleRoute, 1000); // Esperar a que init inyectado cargue
+  }, []);
+
+  // Título contextual según el rol
   const getTituloContextual = () => {
-    if (!user) return 'Seguimiento de Flota';
-    if (user.role.toLowerCase() === 'administrador' || user.role.toLowerCase() === 'admin') {
+    if (!user || !user.role) return 'Seguimiento de Flota';
+    const role = user.role.toLowerCase();
+    if (role === 'administrador' || role === 'admin') {
       return 'Ruta Óptima de Flota (Vista Administrador)';
-    } else if (user.role.toLowerCase() === 'supervisor') {
+    } else if (role === 'supervisor') {
       return 'Ruta Óptima de Flota (Vista Supervisor)';
     } else {
       return 'Mi Ruta Óptima (Vista Reponedor/Repartidor)';
@@ -39,9 +99,9 @@ export const RutasMapaPage: React.FC = () => {
       <div className="mb-4 flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-bold text-[#003366]">{getTituloContextual()}</h2>
-          <p className="text-gray-500">
-            Algoritmo de ruteo TSP en tiempo real con geofencing. 
-            <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-semibold border border-blue-200">
+          <p className="text-gray-500 flex items-center gap-2">
+            Ruteo hiperrealista potenciado por Inteligencia Artificial y Google Maps.
+            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-semibold border border-blue-200">
               {PARADAS_OPTIMIZADAS.length} Puntos de Entrega
             </span>
           </p>
@@ -74,13 +134,11 @@ export const RutasMapaPage: React.FC = () => {
                   onClick={() => setSelectedStop(parada.id)}
                   className="relative pl-6 cursor-pointer group"
                 >
-                  {/* Punto en el timeline */}
                   <span className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white transition-colors
                     ${parada.status === 'completado' ? 'bg-[#5E7032]' : 
                       parada.status === 'en_ruta' ? 'bg-orange-500 animate-pulse' : 'bg-gray-300'}`}
                   ></span>
                   
-                  {/* Tarjeta de Parada */}
                   <div className={`p-3 rounded-lg border transition-all 
                     ${selectedStop === parada.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-100 group-hover:border-blue-300'}`}
                   >
@@ -115,11 +173,13 @@ export const RutasMapaPage: React.FC = () => {
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
             
-            {/* Ruta Planificada Optimizada */}
-            <Polyline 
-              positions={RUTA_LATLNG} 
-              pathOptions={{ color: '#003366', weight: 4, dashArray: '8, 8', opacity: 0.7 }} 
-            />
+            {/* Ruta Planificada Optimizada (Google Maps API Geometry) */}
+            {routePath.length > 0 && (
+              <Polyline 
+                positions={routePath} 
+                pathOptions={{ color: '#003366', weight: 4, dashArray: '8, 8', opacity: 0.7 }} 
+              />
+            )}
 
             {/* Marcadores para cada Parada de la Ruta */}
             {PARADAS_OPTIMIZADAS.map((parada, idx) => (
