@@ -1,11 +1,14 @@
+import json
+
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, JSONParser
+from rest_framework.parsers import MultiPartParser, JSONParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db import transaction
 
 from .serializers import (
     CheckInSerializer,
@@ -14,10 +17,12 @@ from .serializers import (
     RutaDeHoySerializer,
     CompletarParadaSerializer,
     RestockRequestSerializer,
+    TareaEnProcesoSerializer,
 )
 from apps.logistica.models.external import ProductoExterno
 from apps.logistica.models.forms import FormularioDinamico
-from apps.logistica.models import Route, RouteStop, RestockRequest
+from apps.logistica.models import Route, RouteStop, RestockRequest, Visit
+from apps.logistica.services.google_drive import subir_foto, DriveUploadError
 
 class CheckInAPIView(generics.CreateAPIView):
     """
@@ -110,6 +115,92 @@ class CompletarParadaView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"status": "success", "mensaje": "Parada completada.", "stop_id": stop.id})
+
+
+class TareaEnProcesoView(APIView):
+    """
+    Formulario de visita obligatorio: recibe comprobante visual (foto de cámara),
+    notas y datos adicionales (JSON). Sube la foto a Google Drive, registra el
+    FormularioDinamico (con timestamps de login y de captura) y completa la parada,
+    todo de forma transaccional.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, stop_id):
+        stop = get_object_or_404(RouteStop.objects.select_related("route"), id=stop_id)
+        if stop.route.replenisher != request.user:
+            raise PermissionDenied("No tienes acceso a esta parada.")
+        if stop.status != "in_progress":
+            raise ValidationError(
+                "Debes hacer check-in en esta parada antes de registrar la tarea."
+            )
+
+        foto = request.FILES.get("foto")
+        if not foto:
+            raise ValidationError({"foto": "El comprobante visual (foto) es obligatorio."})
+
+        serializer = TareaEnProcesoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        datos = serializer.validated_data
+
+        # datos_extra llega como string JSON en multipart/form-data
+        datos_extra = {}
+        datos_extra_raw = request.data.get("datos_extra")
+        if datos_extra_raw:
+            try:
+                datos_extra = json.loads(datos_extra_raw)
+            except (TypeError, ValueError):
+                raise ValidationError({"datos_extra": "JSON inválido."})
+
+        visit = Visit.objects.filter(route_stop=stop, status="in_progress").first()
+
+        # 1. Subir la evidencia a Drive (fuera de la transacción de BD)
+        nombre = f"tarea-{stop_id}-{int(timezone.now().timestamp())}.jpg"
+        try:
+            foto_url = subir_foto(
+                foto, nombre, mimetype=getattr(foto, "content_type", None) or "image/jpeg"
+            )
+        except DriveUploadError as exc:
+            return Response(
+                {"status": "error", "mensaje": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # 2. Registrar formulario + completar parada de forma atómica
+        with transaction.atomic():
+            formulario = FormularioDinamico.objects.create(
+                visit=visit,
+                tipo_formulario="Tarea_En_Proceso",
+                datos_extra=datos_extra,
+                notas=datos.get("notas"),
+                foto_url=foto_url,
+                foto_timestamp=datos.get("foto_timestamp"),
+                sesion_iniciada_at=datos.get("sesion_iniciada_at"),
+            )
+
+            completar_data = {}
+            if datos.get("real_minutes") is not None:
+                completar_data["real_minutes"] = datos["real_minutes"]
+            if datos.get("notas"):
+                completar_data["notas"] = datos["notas"]
+            completar = CompletarParadaSerializer(
+                data=completar_data, context={"stop": stop}
+            )
+            completar.is_valid(raise_exception=True)
+            completar.save()
+
+        return Response(
+            {
+                "status": "success",
+                "mensaje": "Tarea registrada y parada completada.",
+                "formulario_id": formulario.id,
+                "foto_url": foto_url,
+                "stop_id": stop.id,
+                "stop_status": "completed",
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class OmitirParadaView(APIView):

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  View, TextInput, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+
+import { colors, SPACING, FONT_SIZES, FONTS, RADIUS, shadow } from '../theme';
+import { BodyText, Label } from '../components/StyledText';
+import AppButton from '../components/AppButton';
 import { useAuth } from '../context/AuthContext';
 import { BACKEND_URL } from '../constants/api';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
   const { deviceId, login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -86,15 +88,15 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.brandContainer}>
           <View style={styles.logoPlaceholder} />
           <View style={styles.wordmarkContainer}>
-            <Text style={styles.wordmarkTop}>INDUSTRIAS</Text>
-            <Text style={styles.wordmarkBottom}>VENADO</Text>
+            <BodyText style={styles.wordmarkTop}>INDUSTRIAS</BodyText>
+            <BodyText style={styles.wordmarkBottom}>VENADO</BodyText>
           </View>
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.label}>ACCESO LOGÍSTICA PRO</Text>
+          <Label style={styles.formLabel}>ACCESO LOGÍSTICA PRO</Label>
 
-          {!!error && <Text style={styles.errorText}>{error}</Text>}
+          {!!error && <BodyText style={styles.errorText}>{error}</BodyText>}
 
           <TextInput
             style={styles.input}
@@ -116,17 +118,14 @@ export default function LoginScreen({ navigation }) {
             editable={!loading}
           />
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <AppButton
+            title="INICIAR SESIÓN"
+            variant="success"
             onPress={handleLogin}
-            activeOpacity={0.8}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.buttonText}>INICIAR SESIÓN</Text>
-            }
-          </TouchableOpacity>
+            loading={loading}
+            style={styles.submit}
+            textStyle={styles.submitText}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -135,50 +134,43 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  keyboardView: { flex: 1, justifyContent: 'center', padding: 24 },
-  brandContainer: { alignItems: 'center', marginBottom: 48 },
+  keyboardView: { flex: 1, justifyContent: 'center', padding: SPACING.xl },
+
+  brandContainer: { alignItems: 'center', marginBottom: SPACING.xxl + SPACING.lg },
   logoPlaceholder: {
     width: 64, height: 64,
     backgroundColor: colors.primary,
-    borderRadius: 8, marginBottom: 16,
+    borderRadius: RADIUS.md, marginBottom: SPACING.lg,
   },
   wordmarkContainer: { alignItems: 'center' },
   wordmarkTop: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    fontSize: 14, letterSpacing: 2, color: colors.primary,
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.sm, letterSpacing: 2, color: colors.primary,
   },
   wordmarkBottom: {
-    fontFamily: 'HankenGrotesk_800ExtraBold',
-    fontSize: 28, letterSpacing: -0.5, color: colors.primary, marginTop: -4,
+    fontFamily: FONTS.extrabold,
+    fontSize: FONT_SIZES.xxl + 4, letterSpacing: -0.5, color: colors.primary, marginTop: -4,
   },
+
   formContainer: {
-    backgroundColor: colors.white, padding: 24, borderRadius: 12,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    backgroundColor: colors.white, padding: SPACING.xl, borderRadius: RADIUS.lg,
+    ...shadow(6),
   },
-  label: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    fontSize: 13, letterSpacing: 1.3, color: colors.primary,
-    marginBottom: 16, textAlign: 'center',
+  formLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.sm, letterSpacing: 1.3, color: colors.primary,
+    marginBottom: SPACING.lg, textAlign: 'center',
   },
   errorText: {
-    fontFamily: 'HankenGrotesk_400Regular',
-    fontSize: 13, color: colors.error,
-    marginBottom: 12, textAlign: 'center',
+    fontSize: FONT_SIZES.sm, color: colors.error,
+    marginBottom: SPACING.md, textAlign: 'center',
   },
   input: {
     height: 56, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.outlineVariant,
-    borderRadius: 4, paddingHorizontal: 16, marginBottom: 16,
-    fontFamily: 'HankenGrotesk_400Regular', fontSize: 17, color: colors.black,
+    borderRadius: RADIUS.sm, paddingHorizontal: SPACING.lg, marginBottom: SPACING.lg,
+    fontFamily: FONTS.regular, fontSize: FONT_SIZES.lg, color: colors.black,
   },
-  button: {
-    height: 56, backgroundColor: colors.secondary,
-    borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginTop: 8,
-  },
-  buttonDisabled: { backgroundColor: colors.outlineVariant },
-  buttonText: {
-    fontFamily: 'HankenGrotesk_700Bold',
-    color: colors.white, fontSize: 18, letterSpacing: 1.5,
-  },
+  submit: { height: 56, marginTop: SPACING.sm },
+  submitText: { fontSize: FONT_SIZES.lg, letterSpacing: 1.5 },
 });

@@ -7,10 +7,13 @@ export function useApi() {
   async function apiFetch(path, options = {}) {
     const { headers: extraHeaders, ...rest } = options;
 
+    // Con FormData NO seteamos Content-Type: fetch agrega el boundary multipart.
+    const isFormData = rest.body instanceof FormData;
+
     const res = await fetch(`${BACKEND_URL}${path}`, {
       ...rest,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         Authorization: `Bearer ${token}`,
         'X-Device-ID': deviceId,
         ...extraHeaders,

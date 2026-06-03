@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Constants from 'expo-constants';
-import { colors } from '../theme/colors';
+
+import { colors, SPACING, FONT_SIZES, FONTS, RADIUS } from '../theme';
+import { commonStyles } from '../theme/commonStyles';
+import { Heading, Caption } from '../components/StyledText';
 import { GOOGLE_MAPS_API_KEY } from '../constants/api';
 import { getMapLocation } from '../hooks/useSecureLocation';
 
@@ -30,9 +33,9 @@ function decodePolyline(encoded) {
 
 const MARKER_COLORS = {
   pending:     'gray',
-  in_progress: '#3A5F94',
-  completed:   '#1B6D24',
-  skipped:     '#BA1A1A',
+  in_progress: colors.surfaceTint,
+  completed:   colors.secondary,
+  skipped:     colors.error,
 };
 
 export default function MapScreen({ route, navigation }) {
@@ -115,21 +118,21 @@ export default function MapScreen({ route, navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={commonStyles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.btnBack}>
-          <Text style={styles.btnBackText}>← Volver</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.btnBack} activeOpacity={0.7}>
+          <Caption style={styles.btnBackText}>← Volver</Caption>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mapa de Ruta</Text>
-        <TouchableOpacity onPress={ajustarMapa} style={styles.btnFit}>
-          <Text style={styles.btnFitText}>Ajustar</Text>
+        <Heading style={styles.headerTitle}>Mapa de Ruta</Heading>
+        <TouchableOpacity onPress={ajustarMapa} style={styles.btnFit} activeOpacity={0.85}>
+          <Caption style={styles.btnFitText}>Ajustar</Caption>
         </TouchableOpacity>
       </View>
 
       <MapView
         ref={mapRef}
-        style={styles.map}
+        style={commonStyles.flex1}
         provider={mapProvider}
         initialRegion={initialRegion}
         showsUserLocation={true}
@@ -173,19 +176,19 @@ export default function MapScreen({ route, navigation }) {
         {loadingRoute && (
           <View style={styles.legendRow}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.legendText}> Cargando ruta Google Maps...</Text>
+            <Caption style={styles.legendText}> Cargando ruta Google Maps...</Caption>
           </View>
         )}
         {!GOOGLE_MAPS_API_KEY && (
-          <Text style={styles.legendWarning}>
+          <Caption style={styles.legendWarning}>
             ⚠ Configura GOOGLE_MAPS_API_KEY para ver la ruta real
-          </Text>
+          </Caption>
         )}
         <View style={styles.legendRow}>
           {Object.entries(MARKER_COLORS).map(([status, color]) => (
             <View key={status} style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: color }]} />
-              <Text style={styles.legendText}>{status}</Text>
+              <Caption style={styles.legendText}>{status}</Caption>
             </View>
           ))}
         </View>
@@ -195,25 +198,24 @@ export default function MapScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: colors.primary, paddingHorizontal: 16, paddingTop: 48, paddingBottom: 14,
+    backgroundColor: colors.primary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.xxl + SPACING.lg, paddingBottom: SPACING.lg,
   },
-  headerTitle: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 17, color: colors.white },
-  btnBack: { padding: 4 },
-  btnBackText: { fontFamily: 'HankenGrotesk_600SemiBold', color: colors.inversePrimary, fontSize: 15 },
-  btnFit: { backgroundColor: colors.surfaceTint, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 },
-  btnFitText: { fontFamily: 'HankenGrotesk_600SemiBold', color: colors.white, fontSize: 13 },
-  map: { flex: 1 },
+  headerTitle: { fontSize: FONT_SIZES.lg, color: colors.white },
+  btnBack: { padding: SPACING.xs },
+  btnBackText: { fontFamily: FONTS.semibold, color: colors.inversePrimary, fontSize: FONT_SIZES.md },
+  btnFit: { backgroundColor: colors.surfaceTint, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm + 2, paddingVertical: SPACING.xs + 2 },
+  btnFitText: { fontFamily: FONTS.semibold, color: colors.white, fontSize: FONT_SIZES.sm },
+
   legend: {
-    backgroundColor: colors.white, padding: 12,
+    backgroundColor: colors.white, padding: SPACING.md,
     borderTopWidth: 1, borderTopColor: colors.outlineVariant,
-    gap: 6,
+    gap: SPACING.xs + 2,
   },
-  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, alignItems: 'center' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 12, color: colors.onSurfaceVariant },
-  legendWarning: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 12, color: colors.error },
+  legendText: { fontSize: FONT_SIZES.xs, color: colors.onSurfaceVariant },
+  legendWarning: { fontSize: FONT_SIZES.xs, color: colors.error },
 });

@@ -146,3 +146,10 @@ SIMPLE_JWT = {
 # Integrations
 GRAPHQL_ENDPOINT = os.environ.get("GRAPHQL_ENDPOINT", "https://api.venado.com/graphql")
 FIREBASE_CREDENTIALS = os.environ.get("FIREBASE_CREDENTIALS", "firebase-adminsdk.json")
+
+# ===================================================================
+# Google Drive (evidencia fotográfica de formularios)
+# ===================================================================
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID")
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
