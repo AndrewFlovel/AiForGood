@@ -1,11 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+
+import { colors, SPACING, FONT_SIZES, FONTS, RADIUS, shadow } from '../theme';
+import { commonStyles } from '../theme/commonStyles';
+import { Heading, BodyText, Caption } from '../components/StyledText';
+import AppButton from '../components/AppButton';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
 import { getSecureLocation } from '../hooks/useSecureLocation';
@@ -83,21 +87,6 @@ export default function HomeScreen({ navigation }) {
     }
   }
 
-  async function completarParada(stop) {
-    try {
-      const res = await apiFetch(`/api/logistica/paradas/${stop.id}/completar/`, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        Alert.alert('✅ Parada completada');
-        cargarRuta();
-      }
-    } catch (e) {
-      Alert.alert('Error', e.message);
-    }
-  }
-
   async function omitirParada(stop) {
     Alert.alert(
       'Omitir parada',
@@ -125,44 +114,47 @@ export default function HomeScreen({ navigation }) {
     return (
       <View style={styles.stopCard}>
         <View style={styles.stopHeader}>
-          <Text style={styles.stopOrder}>#{stop.stop_order}</Text>
+          <Caption style={styles.stopOrder}>#{stop.stop_order}</Caption>
           <View style={[styles.badge, { backgroundColor: cfg.color }]}>
-            <Text style={styles.badgeText}>{cfg.label}</Text>
+            <Caption style={styles.badgeText}>{cfg.label}</Caption>
           </View>
         </View>
 
-        <Text style={styles.stopTitle}>PDV {stop.pdv.code}</Text>
-        <Text style={styles.stopMarket}>{stop.pdv.market_name}</Text>
+        <Heading style={styles.stopTitle}>PDV {stop.pdv.code}</Heading>
+        <BodyText style={styles.stopMarket}>{stop.pdv.market_name}</BodyText>
 
         <View style={styles.stopMeta}>
-          <Text style={styles.metaText}>⏱ {stop.pdv.visit_minutes_estimated} min</Text>
-          <Text style={styles.metaText}>
+          <Caption style={styles.metaText}>⏱ {stop.pdv.visit_minutes_estimated} min</Caption>
+          <Caption style={styles.metaText}>
             📍 {stop.pdv.lat.toFixed(4)}, {stop.pdv.lng.toFixed(4)}
-          </Text>
+          </Caption>
         </View>
 
         {isPending && (
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.btnCheckin, isCheckingThisStop && styles.btnDisabled]}
+            <AppButton
+              title="CHECK-IN GPS"
+              variant="primary"
               onPress={() => hacerCheckin(stop)}
-              disabled={isCheckingThisStop}
-            >
-              {isCheckingThisStop
-                ? <ActivityIndicator color={colors.white} size="small" />
-                : <Text style={styles.btnText}>CHECK-IN GPS</Text>
-              }
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.btnOmitir} onPress={() => omitirParada(stop)}>
-              <Text style={[styles.btnText, { color: colors.error }]}>OMITIR</Text>
-            </TouchableOpacity>
+              loading={isCheckingThisStop}
+              style={styles.actionFlex}
+            />
+            <AppButton
+              title="OMITIR"
+              variant="outline"
+              onPress={() => omitirParada(stop)}
+              style={styles.btnOmitir}
+              textStyle={styles.btnOmitirText}
+            />
           </View>
         )}
 
         {isInProgress && (
-          <TouchableOpacity style={styles.btnCompletar} onPress={() => completarParada(stop)}>
-            <Text style={styles.btnText}>MARCAR COMPLETADO</Text>
-          </TouchableOpacity>
+          <AppButton
+            title="REGISTRAR Y COMPLETAR"
+            variant="success"
+            onPress={() => navigation.navigate('TareaEnProceso', { stop })}
+          />
         )}
       </View>
     );
@@ -170,7 +162,7 @@ export default function HomeScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
+      <View style={[commonStyles.flex1, commonStyles.center]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -178,11 +170,9 @@ export default function HomeScreen({ navigation }) {
 
   if (!ruta) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>No tienes ruta asignada para hoy.</Text>
-        <TouchableOpacity onPress={logout} style={styles.btnLogout}>
-          <Text style={[styles.btnText, { color: colors.primary }]}>Cerrar sesión</Text>
-        </TouchableOpacity>
+      <View style={[commonStyles.flex1, commonStyles.center, { padding: SPACING.xl }]}>
+        <BodyText style={styles.emptyText}>No tienes ruta asignada para hoy.</BodyText>
+        <AppButton title="Cerrar sesión" variant="ghost" onPress={logout} />
       </View>
     );
   }
@@ -191,30 +181,35 @@ export default function HomeScreen({ navigation }) {
   const completados = ruta.stops.filter(s => s.status === 'completed').length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={commonStyles.screen}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Ruta del día</Text>
-          <Text style={styles.headerSub}>{ruta.route_date} · {ruta.total_pdvs} PDVs</Text>
+          <Heading style={styles.headerTitle}>Ruta del día</Heading>
+          <Caption style={styles.headerSub}>{ruta.route_date} · {ruta.total_pdvs} PDVs</Caption>
         </View>
         <TouchableOpacity
           style={styles.btnMapa}
           onPress={() => navigation.navigate('Map', { ruta })}
+          activeOpacity={0.85}
         >
-          <Text style={styles.btnMapaText}>VER MAPA →</Text>
+          <Caption style={styles.btnMapaText}>VER MAPA →</Caption>
         </TouchableOpacity>
       </View>
 
       {/* Banner de progreso */}
       <View style={styles.progressBanner}>
-        <Text style={styles.progressText}>
+        <Caption style={styles.progressText}>
           ✅ {completados} completados · ⏳ {pendientes} pendientes · ⏱ {ruta.total_estimated_minutes} min total
-        </Text>
+        </Caption>
         {ruta.status === 'pending' && (
-          <TouchableOpacity style={styles.btnIniciar} onPress={iniciarRuta}>
-            <Text style={styles.btnIniciarText}>INICIAR RUTA</Text>
-          </TouchableOpacity>
+          <AppButton
+            title="INICIAR RUTA"
+            variant="success"
+            onPress={iniciarRuta}
+            style={styles.btnIniciar}
+            textStyle={styles.btnIniciarText}
+          />
         )}
       </View>
 
@@ -230,56 +225,44 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  emptyText: { fontFamily: 'HankenGrotesk_400Regular', color: colors.onSurfaceVariant, marginBottom: 16 },
+  emptyText: { color: colors.onSurfaceVariant, marginBottom: SPACING.lg },
 
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: colors.primary, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.lg,
   },
-  headerTitle: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 18, color: colors.white },
-  headerSub: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 13, color: colors.inversePrimary },
-  btnMapa: { backgroundColor: colors.surfaceTint, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8 },
-  btnMapaText: { fontFamily: 'HankenGrotesk_700Bold', color: colors.white, fontSize: 13 },
+  headerTitle: { fontSize: FONT_SIZES.lg, color: colors.white },
+  headerSub: { color: colors.inversePrimary, marginTop: 2 },
+  btnMapa: {
+    backgroundColor: colors.surfaceTint, borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+  },
+  btnMapaText: { fontFamily: FONTS.bold, color: colors.white, fontSize: FONT_SIZES.sm },
 
   progressBanner: {
-    backgroundColor: colors.primaryContainer, padding: 12, alignItems: 'center', gap: 8,
+    backgroundColor: colors.primaryContainer, padding: SPACING.md, alignItems: 'center', gap: SPACING.sm,
   },
-  progressText: { fontFamily: 'HankenGrotesk_400Regular', color: colors.white, fontSize: 13 },
-  btnIniciar: { backgroundColor: colors.secondary, borderRadius: 6, paddingHorizontal: 20, paddingVertical: 8 },
-  btnIniciarText: { fontFamily: 'HankenGrotesk_700Bold', color: colors.white, fontSize: 14, letterSpacing: 1 },
+  progressText: { color: colors.white, fontSize: FONT_SIZES.sm, textAlign: 'center' },
+  btnIniciar: { height: 40, paddingHorizontal: SPACING.xl },
+  btnIniciarText: { fontSize: FONT_SIZES.sm, letterSpacing: 1 },
 
-  list: { padding: 12, gap: 10 },
+  list: { padding: SPACING.md, gap: SPACING.sm + 2 },
 
   stopCard: {
-    backgroundColor: colors.white, borderRadius: 10, padding: 16,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    backgroundColor: colors.white, borderRadius: RADIUS.md, padding: SPACING.lg,
+    ...shadow(2),
   },
-  stopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  stopOrder: { fontFamily: 'HankenGrotesk_600SemiBold', fontSize: 14, color: colors.onSurfaceVariant },
-  badge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 11, color: colors.white, letterSpacing: 0.5 },
-  stopTitle: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 17, color: colors.black, marginBottom: 2 },
-  stopMarket: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 14, color: colors.onSurfaceVariant, marginBottom: 8 },
-  stopMeta: { flexDirection: 'row', gap: 16, marginBottom: 12 },
-  metaText: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 13, color: colors.onSurfaceVariant },
+  stopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.xs + 2 },
+  stopOrder: { fontFamily: FONTS.semibold, fontSize: FONT_SIZES.sm, color: colors.onSurfaceVariant },
+  badge: { borderRadius: RADIUS.sm - 2, paddingHorizontal: SPACING.sm, paddingVertical: 3 },
+  badgeText: { fontFamily: FONTS.bold, fontSize: FONT_SIZES.xs, color: colors.white, letterSpacing: 0.5 },
+  stopTitle: { fontSize: FONT_SIZES.lg, marginBottom: 2 },
+  stopMarket: { color: colors.onSurfaceVariant, marginBottom: SPACING.sm },
+  stopMeta: { flexDirection: 'row', gap: SPACING.lg, marginBottom: SPACING.md },
+  metaText: { fontSize: FONT_SIZES.sm, color: colors.onSurfaceVariant },
 
-  actions: { flexDirection: 'row', gap: 10 },
-  btnCheckin: {
-    flex: 1, backgroundColor: colors.primary, borderRadius: 6,
-    paddingVertical: 10, alignItems: 'center',
-  },
-  btnOmitir: {
-    borderWidth: 1, borderColor: colors.error, borderRadius: 6,
-    paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center',
-  },
-  btnCompletar: {
-    backgroundColor: colors.secondary, borderRadius: 6,
-    paddingVertical: 10, alignItems: 'center',
-  },
-  btnDisabled: { backgroundColor: colors.outlineVariant },
-  btnText: { fontFamily: 'HankenGrotesk_700Bold', color: colors.white, fontSize: 14, letterSpacing: 0.5 },
-  btnLogout: { marginTop: 12 },
+  actions: { flexDirection: 'row', gap: SPACING.sm + 2 },
+  actionFlex: { flex: 1 },
+  btnOmitir: { borderColor: colors.error, paddingHorizontal: SPACING.lg },
+  btnOmitirText: { color: colors.error },
 });

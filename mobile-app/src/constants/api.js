@@ -7,11 +7,11 @@ import Constants from 'expo-constants';
 //       'https://xxxx.ngrok-free.app'         (ngrok)
 // Déjala vacía ('') para usar la red local (misma WiFi).
 // ─────────────────────────────────────────────────────────────────────────────
-const TUNNEL_URL = '';
+const TUNNEL_URL = 'https://public-chicken-own.loca.lt';
 
 // IP LAN de la máquina de desarrollo (Django corre en :8001).
 // Usada solo cuando NO hay túnel y el teléfono está en la misma WiFi.
-const LAN_IP = '192.168.88.12';
+const LAN_IP = '10.15.175.235';
 
 function resolverBackend() {
   // 1. Si hay túnel configurado, tiene prioridad (funciona desde cualquier red).

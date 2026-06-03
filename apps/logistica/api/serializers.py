@@ -138,6 +138,18 @@ class CompletarParadaSerializer(serializers.Serializer):
         return stop
 
 
+class TareaEnProcesoSerializer(serializers.Serializer):
+    """
+    Valida los campos escalares del formulario de visita 'tarea en proceso'.
+    `datos_extra` (JSON) y el archivo `foto` se procesan directamente en la vista
+    porque llegan como multipart/form-data.
+    """
+    notas = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    foto_timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    sesion_iniciada_at = serializers.DateTimeField(required=False, allow_null=True)
+    real_minutes = serializers.IntegerField(required=False, min_value=0)
+
+
 class RestockRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = RestockRequest

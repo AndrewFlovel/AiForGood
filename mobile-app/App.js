@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
+import TareaEnProcesoScreen from './src/screens/TareaEnProcesoScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,7 @@ function AppNavigator() {
         <>
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Map" component={MapScreen} />
+          <Stack.Screen name="TareaEnProceso" component={TareaEnProcesoScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />

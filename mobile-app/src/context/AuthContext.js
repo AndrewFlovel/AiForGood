@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 
 const DEVICE_ID_KEY = '@venado_device_id';
 const TOKEN_KEY = '@venado_token';
+const LOGIN_TS_KEY = '@venado_login_ts';
 
 function generateDeviceId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -16,14 +17,16 @@ function generateDeviceId() {
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
+  const [loginTimestamp, setLoginTimestamp] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function init() {
       try {
-        let [storedToken, storedDeviceId] = await Promise.all([
+        let [storedToken, storedDeviceId, storedLoginTs] = await Promise.all([
           AsyncStorage.getItem(TOKEN_KEY),
           AsyncStorage.getItem(DEVICE_ID_KEY),
+          AsyncStorage.getItem(LOGIN_TS_KEY),
         ]);
 
         if (!storedDeviceId) {
@@ -33,6 +36,7 @@ export function AuthProvider({ children }) {
 
         setDeviceId(storedDeviceId);
         setToken(storedToken);
+        setLoginTimestamp(storedLoginTs);
       } finally {
         setIsLoading(false);
       }
@@ -41,17 +45,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login(newToken) {
-    await AsyncStorage.setItem(TOKEN_KEY, newToken);
+    const ts = new Date().toISOString();
+    await AsyncStorage.multiSet([
+      [TOKEN_KEY, newToken],
+      [LOGIN_TS_KEY, ts],
+    ]);
     setToken(newToken);
+    setLoginTimestamp(ts);
   }
 
   async function logout() {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.multiRemove([TOKEN_KEY, LOGIN_TS_KEY]);
     setToken(null);
+    setLoginTimestamp(null);
   }
 
   return (
-    <AuthContext.Provider value={{ token, deviceId, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, deviceId, loginTimestamp, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

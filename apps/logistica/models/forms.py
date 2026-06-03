@@ -29,7 +29,19 @@ class FormularioDinamico(models.Model):
         null=True,
         blank=True,
     )
-    
+
+    # Comprobante visual alojado en Google Drive: la BD solo guarda la URL pública
+    foto_url = models.TextField(null=True, blank=True)
+
+    # Notas amplias del reponedor
+    notas = models.TextField(null=True, blank=True)
+
+    # Timestamp exacto en que se tomó la foto en el dispositivo
+    foto_timestamp = models.DateTimeField(null=True, blank=True)
+
+    # Timestamp del inicio de sesión del usuario (enviado por la app)
+    sesion_iniciada_at = models.DateTimeField(null=True, blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
