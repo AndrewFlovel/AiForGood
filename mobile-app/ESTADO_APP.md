@@ -105,7 +105,7 @@ src/
 │   ├── MapScreen.js          (rediseñada)
 │   └── TareaEnProcesoScreen.js (nueva)
 └── theme/
-    ├── colors.js             (marca Venado — intacto)
+    ├── colors.js             (marca Venaris Route)
     ├── commonStyles.js       (nuevo)
     └── index.js              (nuevo — design tokens)
 ```
@@ -133,6 +133,11 @@ src/
 1. Si `TUNNEL_URL` está seteado → tiene prioridad (cualquier red). **← modo actual**
 2. Si no, modo LAN → usa el host que Expo expone, o el fallback `LAN_IP` (`10.25.17.235`).
 
+> 🔒 **`TUNNEL_URL` es configuración LOCAL por desarrollador — NO se commitea.**
+> Durante el setup, cada quien pega su propia URL de túnel en `src/constants/api.js`;
+> ese cambio es efímero y específico de la máquina, así que debe quedar **fuera de los
+> commits** (déjalo en el working tree). El repo mantiene `TUNNEL_URL = ''` por defecto.
+
 ### Arquitectura de túneles
 - **Metro (bundle JS, 8081)**: `npx expo start --dev-client --tunnel` (usa `@expo/ngrok`).
 - **Backend Django (8001)**: `npx localtunnel --port 8001 --subdomain venado-backend`
@@ -146,13 +151,20 @@ La URL del túnel de Expo cambia al reiniciarse → reabrir el proyecto en el de
 Si `venado-backend` estuviera ocupado, localtunnel asigna otra URL → actualizar `TUNNEL_URL`.
 
 ### Dev build (APK) — requiere regenerarse si se agregan módulos nativos
-El APK debe incluir los módulos nativos (`expo-image-picker`, `expo-location`, maps).
+El APK debe incluir los módulos nativos (`expo-image-picker`, `expo-location`, maps,
+`expo-network`).
 Build de development en la nube:
 ```bash
 cd mobile-app
 npx eas build --profile development --platform android
 ```
 Instalar el APK desde el enlace que entrega EAS (desinstalar el viejo primero).
+
+> ⚠️ **Rebuild pendiente:** se agregó `expo-network` (indicador de conexión de la barra
+> de sesión). El dev build actual **no lo incluye** → el hook `useConnectivity` es
+> defensivo y asumirá *"en línea"* hasta regenerar el APK. **Regenerar el dev build antes
+> de validar la conectividad** (modo avión, etc.). El resto de la barra de sesión
+> (identidad, cronómetro, "Finalizar jornada") funciona solo con recargar el bundle JS.
 
 ---
 
