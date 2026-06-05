@@ -11,7 +11,6 @@ import { commonStyles } from '../theme/commonStyles';
 import { Heading, BodyText, Caption } from '../components/StyledText';
 import AppButton from '../components/AppButton';
 import { useApi } from '../hooks/useApi';
-import { useAuth } from '../context/AuthContext';
 import { getSecureLocation } from '../hooks/useSecureLocation';
 
 const STATUS_CONFIG = {
@@ -22,7 +21,6 @@ const STATUS_CONFIG = {
 };
 
 export default function HomeScreen({ navigation }) {
-  const { logout } = useAuth();
   const { apiFetch } = useApi();
   const [ruta, setRuta] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -172,7 +170,9 @@ export default function HomeScreen({ navigation }) {
     return (
       <View style={[commonStyles.flex1, commonStyles.center, { padding: SPACING.xl }]}>
         <BodyText style={styles.emptyText}>No tienes ruta asignada para hoy.</BodyText>
-        <AppButton title="Cerrar sesión" variant="ghost" onPress={logout} />
+        <Caption style={styles.emptyHint}>
+          Usa "Finalizar jornada" en la barra inferior para cerrar tu sesión.
+        </Caption>
       </View>
     );
   }
@@ -225,7 +225,8 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  emptyText: { color: colors.onSurfaceVariant, marginBottom: SPACING.lg },
+  emptyText: { color: colors.onSurfaceVariant, marginBottom: SPACING.sm },
+  emptyHint: { color: colors.onSurfaceVariant, textAlign: 'center' },
 
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

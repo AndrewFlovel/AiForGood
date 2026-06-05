@@ -1,5 +1,5 @@
 // src/theme/index.js
-// Sistema de diseño centralizado de Venado Logística.
+// Sistema de diseño centralizado de Venaris Route.
 // Punto único de verdad para colores, espaciado, tipografía, radios y sombras.
 // Nunca hardcodear estos valores en las pantallas: impórtalos siempre desde aquí.
 

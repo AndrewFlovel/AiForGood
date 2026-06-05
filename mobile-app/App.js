@@ -18,6 +18,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
 import TareaEnProcesoScreen from './src/screens/TareaEnProcesoScreen';
+import SessionBar from './src/components/SessionBar';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,18 +33,27 @@ function AppNavigator() {
     );
   }
 
+  if (!token) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // Área autenticada: la SessionBar es hermana del navegador (no lo solapa)
+  // y queda visible de forma persistente en todas las pantallas.
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {token ? (
-        <>
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Map" component={MapScreen} />
           <Stack.Screen name="TareaEnProceso" component={TareaEnProcesoScreen} />
-        </>
-      ) : (
-        <Stack.Screen name="Login" component={LoginScreen} />
-      )}
-    </Stack.Navigator>
+        </Stack.Navigator>
+      </View>
+      <SessionBar />
+    </View>
   );
 }
 

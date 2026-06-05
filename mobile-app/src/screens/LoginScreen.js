@@ -67,7 +67,12 @@ export default function LoginScreen() {
         return;
       }
 
-      await login(accessToken);
+      const user = {
+        username: authData.username || username.trim(),
+        firstName: authData.first_name || authData.username || username.trim(),
+        role: authData.role || 'Reponedor',
+      };
+      await login(accessToken, user);
     } catch (e) {
       if (e.name === 'AbortError') {
         setError(`El servidor no responde (${BACKEND_URL}). ¿Misma red WiFi?`);
@@ -91,11 +96,12 @@ export default function LoginScreen() {
               source={require('../../assets/logo.png')}
               style={styles.logo}
               resizeMode="contain"
-              accessibilityLabel="Logo Venado Route AI"
+              accessibilityLabel="Logo Venaris Route"
             />
           <View style={styles.wordmarkContainer}>
             <BodyText style={styles.wordmarkTop}>INDUSTRIAS</BodyText>
-            <BodyText style={styles.wordmarkBottom}>VENADO</BodyText>
+            <BodyText style={styles.wordmarkBottom}>VENARIS</BodyText>
+            <BodyText style={styles.wordmarkAccent}>ROUTE</BodyText>
           </View>
         </View>
 
@@ -155,6 +161,10 @@ const styles = StyleSheet.create({
   wordmarkBottom: {
     fontFamily: FONTS.extrabold,
     fontSize: FONT_SIZES.xxl + 4, letterSpacing: -0.5, color: colors.primary, marginTop: -4,
+  },
+  wordmarkAccent: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.sm, letterSpacing: 6, color: colors.surfaceTint, marginTop: 2,
   },
 
   formContainer: {
