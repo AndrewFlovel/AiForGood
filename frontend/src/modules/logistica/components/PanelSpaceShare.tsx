@@ -48,7 +48,7 @@ export const PanelSpaceShare: React.FC = () => {
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               cursor={{fill: '#F9FAFB'}}
             />
-            <Bar dataKey="venado" name="Venado" stackId="a" fill="#003366" radius={[0, 0, 4, 4]} />
+            <Bar dataKey="venado" name="Venaris" stackId="a" fill="#001E40" radius={[0, 0, 4, 4]} />
             <Bar dataKey="competencia" name="Competencia" stackId="a" fill="#D1D5DB" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>

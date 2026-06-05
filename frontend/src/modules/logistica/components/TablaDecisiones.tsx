@@ -9,7 +9,7 @@ export const TablaDecisiones: React.FC = () => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6 animate-in fade-in duration-500">
       <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-[#F5F7FA]">
         <div>
-          <h3 className="text-lg font-bold text-[#003366]">Matriz de Toma de Decisiones</h3>
+          <h3 className="text-lg font-bold text-venaris-primary">Matriz de Toma de Decisiones</h3>
           <p className="text-sm text-gray-500">Análisis comparativo de sucursales para intervención rápida.</p>
         </div>
       </div>
@@ -49,13 +49,13 @@ export const TablaDecisiones: React.FC = () => {
                   <td className="p-4 w-48">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-gray-700">{ultimaVenta} und</span>
-                      <span className={sucursal.metaAlcanzada ? 'text-[#5E7032]' : 'text-[#D32F2F]'}>
+                      <span className={sucursal.metaAlcanzada ? 'text-venaris-secondary' : 'text-venaris-tertiary'}>
                         {sucursal.metaAlcanzada ? 'Meta' : 'Bajo'}
                       </span>
                     </div>
                     <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full ${sucursal.metaAlcanzada ? 'bg-[#5E7032]' : 'bg-[#D32F2F]'}`}
+                        className={`h-full rounded-full ${sucursal.metaAlcanzada ? 'bg-venaris-secondary' : 'bg-venaris-tertiary'}`}
                         style={{ width: `${porcentajeVenta}%` }}
                       ></div>
                     </div>
@@ -64,11 +64,11 @@ export const TablaDecisiones: React.FC = () => {
                   {/* Celda: Space Share (Barra Apilada CSS) */}
                   <td className="p-4 w-48">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-[#003366]">{share.venado}% Venado</span>
+                      <span className="font-medium text-venaris-primary">{share.venado}% Venado</span>
                       <span className="text-gray-400">Comp.</span>
                     </div>
                     <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden flex">
-                      <div className="h-full bg-[#003366]" style={{ width: `${share.venado}%` }}></div>
+                      <div className="h-full bg-venaris-primary" style={{ width: `${share.venado}%` }}></div>
                       <div className="h-full bg-gray-300" style={{ width: `${100 - share.venado}%` }}></div>
                     </div>
                   </td>

@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { Truck, Lock, User } from 'lucide-react';
-
-// Si no hay variable de entorno, usamos 127.0.0.1 en lugar de localhost para evitar problemas de IPv6 en Windows
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+import { Lock, User } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -20,10 +17,9 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/login/`, {
+      const res = await fetch('/api/auth/login/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Device-bound JWT exigido por backend
         body: JSON.stringify({ username, password, device_id: 'web-supervisor-01' }),
       });
 
@@ -42,13 +38,13 @@ const LoginPage: React.FC = () => {
 
       // Guardamos tokens usando nuestro nuevo store
       if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
-      login(data.access);
+      login(data.access, username);
       
       // Redirigimos al Dashboard
       navigate('/logistica/dashboard', { replace: true });
 
     } catch (err) {
-      setError(`No se pudo conectar al servidor. Verifica que Django esté corriendo en ${BACKEND_URL}`);
+      setError('No se pudo conectar al servidor. Verifica que el backend esté corriendo.');
     } finally {
       setLoading(false);
     }
@@ -57,16 +53,22 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-[#003366] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-            <Truck className="w-8 h-8 text-white" />
+        <div className="flex flex-col items-center mb-6 gap-3">
+          <img src="/logo.svg" alt="Industrias Venaris" className="w-24 h-24 object-contain" />
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-bold tracking-[0.32em] text-venaris-primary uppercase">
+              Industrias
+            </span>
+            <span className="text-3xl font-extrabold text-venaris-primary leading-tight">
+              VENARIS
+            </span>
           </div>
         </div>
-        <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
-          LOGÍSTICA PRO
+        <h2 className="text-center text-lg font-bold tracking-widest text-venaris-primary uppercase mb-1">
+          Venaris Route AI — Logística Pro
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Plataforma de Control de Flotas y Geofencing
+        <p className="text-center text-sm text-gray-500">
+          Panel de control para supervisores
         </p>
       </div>
 
@@ -100,7 +102,7 @@ const LoginPage: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="focus:ring-[#003366] focus:border-[#003366] block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-3 bg-gray-50 border transition-colors outline-none"
+                  className="focus:ring-venaris-primary focus:border-venaris-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-3 bg-gray-50 border transition-colors outline-none"
                   placeholder="Ej. admin"
                 />
               </div>
@@ -117,7 +119,7 @@ const LoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="focus:ring-[#003366] focus:border-[#003366] block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-3 bg-gray-50 border transition-colors outline-none"
+                  className="focus:ring-venaris-primary focus:border-venaris-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-3 bg-gray-50 border transition-colors outline-none"
                   placeholder="••••••••"
                 />
               </div>
@@ -127,7 +129,7 @@ const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#003366] hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#003366] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-venaris-primary hover:bg-venaris-primary-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-venaris-primary transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? 'AUTENTICANDO...' : 'INICIAR SESIÓN'}
               </button>

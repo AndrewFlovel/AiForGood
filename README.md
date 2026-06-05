@@ -173,69 +173,25 @@ AI-For-Good/
 
 ## 🛠️ Instalación y Ejecución
 
-### Prerrequisitos
+Para una guía detallada, paso a paso, sobre cómo configurar este proyecto por primera vez (Backend, Frontend y App Móvil), consulta nuestra **[Guía de Configuración Inicial (SETUP.md)](./SETUP.md)**.
 
-- **Docker** & **Docker Compose**
-- **Python 3.11+** (para desarrollo local sin Docker)
+### Resumen Rápido (Quick Start)
 
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/AndrewFlovel/AiForGood.git
-cd AiForGood
-```
-
-### 2. Configurar variables de entorno
-
+**1. Levantar el Backend y Base de Datos:**
 ```bash
 cp .env.example .env
-# Editar .env con tus credenciales reales
+docker compose up -d --build
+```
+*(El backend quedará disponible en http://localhost:8001)*
+
+**2. Levantar Dashboard Web:**
+```bash
+cd frontend && npm install && npm run dev
 ```
 
-| Variable | Descripción |
-|---|---|
-| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Credenciales de PostgreSQL local |
-| `DB_HOST` / `DB_PORT` | Host (`db` en Docker) y puerto (`5432`) |
-| `EXTERNAL_DB_*` | Conexión de solo lectura al ERP de Venado |
-| `SECRET_KEY` | Clave secreta de Django |
-| `FIREBASE_CREDENTIALS` | Ruta al JSON de Firebase Admin SDK |
-| `GRAPHQL_ENDPOINT` | URL del endpoint GraphQL de Venado |
-
-### 3. Levantar con Docker (recomendado)
-
+**3. Levantar App Móvil:**
 ```bash
-docker compose up -d
-```
-
-Esto levanta automáticamente:
-
-| Servicio | Puerto | Descripción |
-|---|---|---|
-| 🐘 **db** | `5432` | PostgreSQL 15 + PostGIS 3.3 |
-| 🐍 **backend** | `8000` | Django + migraciones + datos iniciales |
-
-> El comando `init_db` crea automáticamente:
-> - Usuario admin: `admin` / `admin123`
-> - Sucursal de prueba: "Sucursal Central Hackathon" (coord: -33.4489, -70.6693, radio: 100m)
-
-### 4. Desarrollo local (sin Docker)
-
-```bash
-# Crear entorno virtual
-python -m venv .venv
-source .venv/bin/activate
-
-# Instalar dependencias
-pip install -r requirements/development.txt
-
-# Migraciones
-python manage.py migrate
-
-# Cargar datos iniciales
-python manage.py init_db
-
-# Ejecutar servidor
-python manage.py runserver
+cd mobile-app && npm install && npm run start
 ```
 
 ---

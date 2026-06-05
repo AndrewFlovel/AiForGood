@@ -7,16 +7,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        venado: {
-          primary: '#003366',
-          secondary: '#SE7032',
-          tertiary: '#D32F2F',
+        venaris: {
+          primary: '#001E40',
+          'primary-light': '#003366',
+          secondary: '#1B6D24',
+          tertiary: '#BA1A1A',
           dark: '#4A4A4A',
-          light: '#FSF7FA'
+          light: '#F7F9FC',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Hanken Grotesk', 'Inter', 'sans-serif'],
       }
     },
   },

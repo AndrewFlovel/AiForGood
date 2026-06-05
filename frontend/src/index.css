@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+:root {
+  --venaris-primary: #001E40;
+  --venaris-secondary: #1B6D24;
+  --venaris-tertiary: #BA1A1A;
+  --venaris-surface: #F7F9FC;
+}
+
+body {
+  font-family: 'Hanken Grotesk', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

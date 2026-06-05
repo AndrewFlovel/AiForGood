@@ -1,7 +1,7 @@
 export const environment = {
   isProduction: import.meta.env.PROD,
   graphql: {
-    uri: import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:8000/graphql',
+    uri: import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:8001/graphql',
   },
   firebase: {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

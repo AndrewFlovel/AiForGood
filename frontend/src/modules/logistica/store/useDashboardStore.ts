@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import type { DashboardSupervisorResponse } from '../types/api';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 
 export interface Sucursal {
   id: string;
@@ -89,7 +91,7 @@ export const mockSpaceShareData = [
 ];
 
 export const mockSpaceShareGlobal = [
-  { name: 'Venado', value: 47, fill: '#003366' },
+  { name: 'Venaris', value: 47, fill: '#001E40' },
   { name: 'Competencia Principal', value: 38, fill: '#D1D5DB' },
   { name: 'Otros', value: 15, fill: '#9CA3AF' }
 ];
@@ -104,4 +106,44 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   sucursalSeleccionada: null,
   setSucursalSeleccionada: (sucursal) => set({ sucursalSeleccionada: sucursal }),
   sucursales: mockSucursales,
+}));
+
+// ── Store de supervisor (datos reales desde la API Django) ─────────────────────
+
+interface SupervisorState {
+  supervisorData: DashboardSupervisorResponse | null;
+  supervisorLoading: boolean;
+  supervisorError: string | null;
+  fetchSupervisorDashboard: () => Promise<void>;
+}
+
+export const useSupervisorStore = create<SupervisorState>((set) => ({
+  supervisorData: null,
+  supervisorLoading: false,
+  supervisorError: null,
+
+  fetchSupervisorDashboard: async () => {
+    set({ supervisorLoading: true, supervisorError: null });
+    const { getAuthHeaders, logout } = useAuthStore.getState();
+    try {
+      const res = await fetch('/api/logistica/supervisor/dashboard/', {
+        headers: getAuthHeaders(),
+      });
+      if (res.status === 401) {
+        logout();
+        return;
+      }
+      if (!res.ok) {
+        set({ supervisorError: `Error ${res.status} al cargar el dashboard` });
+        return;
+      }
+      set({ supervisorData: await res.json() });
+    } catch (e) {
+      set({
+        supervisorError: e instanceof Error ? e.message : 'Sin conexión al servidor',
+      });
+    } finally {
+      set({ supervisorLoading: false });
+    }
+  },
 }));

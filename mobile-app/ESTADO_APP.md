@@ -123,57 +123,64 @@ src/
 
 ---
 
-## 7. Conexión en desarrollo — estado y pendiente
+## 7. Conexión en desarrollo — vía TÚNEL (definitiva)
+
+> Se eligió **túnel** porque la WiFi actual (`10.25.17.x`) bloquea LAN (firewall / client
+> isolation): los puertos 8081/8001 dan *timeout* desde la IP LAN. El túnel funciona desde
+> cualquier red (datos móviles u otra WiFi) y evita el firewall.
 
 ### Resolución de backend (`src/constants/api.js`)
-1. Si `TUNNEL_URL` está seteado → tiene prioridad (cualquier red).
-2. Si no, modo LAN → usa el host que Expo expone, o el fallback `LAN_IP`.
-   - `LAN_IP` actual: **`10.15.175.235`** (IP de la laptop al 2026-05-31).
+1. Si `TUNNEL_URL` está seteado → tiene prioridad (cualquier red). **← modo actual**
+2. Si no, modo LAN → usa el host que Expo expone, o el fallback `LAN_IP` (`10.25.17.235`).
 
-### ⚠️ Bloqueo pendiente: firewall de la laptop
-- Metro responde en `localhost:8081` (✅) pero **da timeout desde la IP LAN** `10.15.175.235:8081`.
-- Mismo síntoma con Django `:8001`. *Timeout* (no "rechazado") ⇒ **firewall descartando paquetes**.
-- Por eso el teléfono **no logra conectarse** en modo LAN.
+### Arquitectura de túneles
+- **Metro (bundle JS, 8081)**: `npx expo start --dev-client --tunnel` (usa `@expo/ngrok`).
+- **Backend Django (8001)**: `npx localtunnel --port 8001 --subdomain venado-backend`
+  → URL **fija** `https://venado-backend.loca.lt`, ya configurada en `TUNNEL_URL`.
+  El `--subdomain` hace que la URL **se conserve** entre reinicios (si está libre), así no
+  hay que re-editar `api.js`.
 
-### Cómo resolverlo (elegir una)
-**A. Abrir puertos (ufw):**
+### ⚠️ El túnel de Expo (Metro) sigue siendo efímero
+La URL del túnel de Expo cambia al reiniciarse → reabrir el proyecto en el dev-client
+(escanear el nuevo QR). El backend (subdominio fijo) normalmente no necesita re-pegarse.
+Si `venado-backend` estuviera ocupado, localtunnel asigna otra URL → actualizar `TUNNEL_URL`.
+
+### Dev build (APK) — requiere regenerarse si se agregan módulos nativos
+El APK debe incluir los módulos nativos (`expo-image-picker`, `expo-location`, maps).
+Build de development en la nube:
 ```bash
-sudo ufw allow 8081/tcp
-sudo ufw allow 8001/tcp
-# en el teléfono (dev build → Enter URL): http://10.15.175.235:8081
+cd mobile-app
+npx eas build --profile development --platform android
 ```
-
-**B. USB con adb (evita WiFi y firewall) — recomendado para demo:**
-```bash
-sudo apt install -y android-tools-adb
-adb devices                 # aceptar "Permitir depuración USB" en el teléfono
-adb reverse tcp:8081 tcp:8081
-adb reverse tcp:8001 tcp:8001
-# en el teléfono usar: http://localhost:8081
-```
-> Si se usa USB, cambiar `LAN_IP = 'localhost'` en `src/constants/api.js`.
-
-**C. Tunnel (ngrok):** `npx expo start --dev-client --tunnel`
-> Falló antes por un outage de ngrok; reintentar si el servicio se recuperó.
+Instalar el APK desde el enlace que entrega EAS (desinstalar el viejo primero).
 
 ---
 
-## 8. Comandos útiles
+## 8. Comandos útiles (flujo túnel)
 
 ```bash
-# Levantar Metro en modo LAN fijando la IP
-cd mobile-app
-REACT_NATIVE_PACKAGER_HOSTNAME=10.15.175.235 npx expo start --dev-client --lan
+# 1. Backend (Django + PostGIS)
+docker compose up -d                       # expone Django en :8001
 
-# Backend (Django + PostGIS)
-docker compose up -d        # expone Django en :8001
+# 2. Túnel del backend con subdominio fijo (URL estable: https://venado-backend.loca.lt)
+npx localtunnel --port 8001 --subdomain venado-backend
+
+# 3. Metro en modo túnel (escanear el QR en el dev-client)
+cd mobile-app && npx expo start --dev-client --tunnel
+
+# (cuando se agregan módulos nativos) regenerar el dev build
+cd mobile-app && npx eas build --profile development --platform android
 ```
 
 ---
 
 ## 9. Pendientes
 
-- [ ] Resolver firewall / conexión del teléfono (sección 7).
-- [ ] Prueba end-to-end del flujo "Tarea en Proceso" en dispositivo.
-- [ ] Commit + push a GitHub (feature Drive + rediseño). **No commitear `.env` ni credenciales.**
+- [x] Resolver conexión del teléfono → **vía túnel** (Metro + backend por loca.lt).
+- [x] Dev build actualizado con cámara (EAS Android, build 79dd7e26).
+- [ ] Prueba end-to-end del flujo "Tarea en Proceso" en dispositivo (instalar APK nuevo).
+- [ ] (Opcional) Túnel con dominio fijo para no re-pegar `TUNNEL_URL` cada sesión.
 - [ ] (Opcional) Mover el schema de "datos adicionales" a un endpoint del supervisor.
+
+## 10. Nuevo Plan: Sesiones Offline
+Se ha creado el documento `PLAN_SESION_OFFLINE.md` que detalla la arquitectura offline-first, sesiones sin expiración y registro silencioso de actividades en formato JSON para la futura migración a Supabase.

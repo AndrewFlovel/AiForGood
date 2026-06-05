@@ -1,16 +1,28 @@
-# React + Vite
+# ⚠️ PROYECTO ARCHIVADO — web-app/
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este directorio fue el primer prototipo de la interfaz web de **Venaris Route AI**.
 
-Currently, two official plugins are available:
+**El proyecto activo es [`/frontend/`](../frontend/)** — versión con TypeScript, Tailwind CSS 4, React Router 7, Zustand, Leaflet y Recharts.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Por qué se archivó
 
-## React Compiler
+- Solo tenía 2 componentes (Login + Dashboard tabla básica)
+- Sin sistema de rutas (React Router)
+- Sin UI rica (no había mapa interactivo, paneles analíticos ni gráficas)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Qué se migró a /frontend/
 
-## Expanding the ESLint configuration
+- Conexión real a `GET /api/logistica/supervisor/dashboard/`
+- `StatusBadge` con colores por estado (`pending`, `in_progress`, `completed`, `partial`)
+- Paleta de colores de marca (`#001E40` primario, `#1B6D24` secundario)
+- Logo y wordmark "INDUSTRIAS VENARIS"
+- `useAuthStore` con `username`, `deviceId` y `getAuthHeaders()`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Cómo correr el proyecto activo
+
+```bash
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
+```
