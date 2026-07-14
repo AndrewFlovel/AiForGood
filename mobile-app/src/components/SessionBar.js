@@ -13,11 +13,13 @@ import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { useConnectivity } from '../hooks/useConnectivity';
 import { useElapsedTime } from '../hooks/useElapsedTime';
+import { useSincronizacion } from '../context/SincronizacionContext';
 
 export default function SessionBar() {
   const { user, loginTimestamp, logout } = useAuth();
   const { apiFetch } = useApi();
   const { isOnline } = useConnectivity();
+  const { pendientes, sincronizando } = useSincronizacion() ?? {};
   const elapsed = useElapsedTime(loginTimestamp);
   const insets = useSafeAreaInsets();
   const [finishing, setFinishing] = useState(false);
@@ -75,7 +77,13 @@ export default function SessionBar() {
               { backgroundColor: isOnline ? colors.secondary : colors.error },
             ]}
           />
-          <Caption style={styles.conn}>{isOnline ? 'En línea' : 'Sin conexión'}</Caption>
+          <Caption style={styles.conn}>
+            {isOnline ? 'En línea' : 'Sin conexión'}
+            {pendientes > 0 &&
+              (sincronizando
+                ? ' · 📦 sincronizando…'
+                : ` · 📦 ${pendientes} por sincronizar`)}
+          </Caption>
         </View>
         <Caption style={styles.identity} numberOfLines={1}>
           {nombre} · {rol} · ⏱ {elapsed}

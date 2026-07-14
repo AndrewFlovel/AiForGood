@@ -4,7 +4,7 @@ from apps.logistica.models import (
     Market, ClientType, PDV, 
     Route, RouteStop, Visit, 
     RestockRequest, ProductIssue, FormularioDinamico,
-    ProductoExterno
+    ProductoExterno, EventoRespuesta
 )
 
 @admin.register(Market)
@@ -46,6 +46,13 @@ class VisitAdmin(admin.ModelAdmin):
 class FormularioDinamicoAdmin(admin.ModelAdmin):
     list_display = ('visit', 'tipo_formulario', 'creado_en')
     list_filter = ('tipo_formulario', 'creado_en')
+
+@admin.register(EventoRespuesta)
+class EventoRespuestaAdmin(GISModelAdmin):
+    list_display = ('pregunta_key', 'valor', 'entidad_nombre', 'answered_at', 'replenisher', 'creado_en')
+    list_filter = ('pregunta_key', 'answered_at')
+    search_fields = ('entidad_nombre', 'pregunta_descripcion')
+    readonly_fields = ('id', 'creado_en')
 
 @admin.register(ProductoExterno)
 class ProductoExternoAdmin(admin.ModelAdmin):

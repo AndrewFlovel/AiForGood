@@ -72,7 +72,9 @@ export default function LoginScreen() {
         firstName: authData.first_name || authData.username || username.trim(),
         role: authData.role || 'Reponedor',
       };
-      await login(accessToken, user);
+      // Guardar también el refresh: el sincronizador offline lo usa para
+      // renovar el access token sin desloguear al reponedor.
+      await login(accessToken, user, authData.refresh || null);
     } catch (e) {
       if (e.name === 'AbortError') {
         setError(`El servidor no responde (${BACKEND_URL}). ¿Misma red WiFi?`);

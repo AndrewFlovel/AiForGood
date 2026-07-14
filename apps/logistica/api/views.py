@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -7,9 +8,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth import get_user_model
+from django.contrib.gis.geos import Point
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.db import transaction
+from django.db import transaction, IntegrityError
 
 from .serializers import (
     CheckInSerializer,
@@ -19,6 +21,7 @@ from .serializers import (
     CompletarParadaSerializer,
     RestockRequestSerializer,
     TareaEnProcesoSerializer,
+    EventoRespuestaSerializer,
     ReponedorListSerializer,
     CrearReponedorSerializer,
     MarketSerializer,
@@ -30,7 +33,7 @@ from .serializers import (
 )
 from apps.logistica.models.external import ProductoExterno
 from apps.logistica.models.forms import FormularioDinamico
-from apps.logistica.models import Route, RouteStop, RestockRequest, Visit, PDV, Market, ClientType
+from apps.logistica.models import Route, RouteStop, RestockRequest, Visit, PDV, Market, ClientType, EventoRespuesta
 from apps.logistica.services.google_drive import subir_foto, DriveUploadError
 from apps.logistica.services.route_optimization import optimize_route, get_route_details, haversine_m
 
@@ -235,10 +238,45 @@ class TareaEnProcesoView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    def _respuesta_duplicado(self, formulario, stop):
+        """Respuesta de replay: misma forma que el 201 original + flag duplicado."""
+        return Response(
+            {
+                "status": "success",
+                "mensaje": "Tarea ya registrada previamente (reenvío ignorado).",
+                "formulario_id": formulario.id,
+                "foto_url": formulario.foto_url,
+                "stop_id": stop.id,
+                "stop_status": stop.status,
+                "duplicado": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     def post(self, request, stop_id):
         stop = get_object_or_404(RouteStop.objects.select_related("route"), id=stop_id)
         if stop.route.replenisher != request.user:
             raise PermissionDenied("No tienes acceso a esta parada.")
+
+        # Idempotencia de reenvíos offline: si este client_submission_id ya fue
+        # procesado, devolver el resultado existente ANTES del guard de estado
+        # (la parada ya estará 'completed') y sin re-subir la foto a Drive.
+        client_submission_id = request.data.get("client_submission_id") or None
+        if client_submission_id:
+            try:
+                client_submission_id = uuid.UUID(str(client_submission_id))
+            except ValueError:
+                client_submission_id = None  # el serializer devolverá el 400
+        if client_submission_id:
+            # Scoped al dueño de la visita: un id ajeno (adivinado o en colisión)
+            # jamás debe devolver el formulario/foto de otro reponedor.
+            existente = FormularioDinamico.objects.filter(
+                client_submission_id=client_submission_id,
+                visit__replenisher=request.user,
+            ).first()
+            if existente:
+                return self._respuesta_duplicado(existente, stop)
+
         if stop.status != "in_progress":
             raise ValidationError(
                 "Debes hacer check-in en esta parada antes de registrar la tarea."
@@ -276,27 +314,41 @@ class TareaEnProcesoView(APIView):
             )
 
         # 2. Registrar formulario + completar parada de forma atómica
-        with transaction.atomic():
-            formulario = FormularioDinamico.objects.create(
-                visit=visit,
-                tipo_formulario="Tarea_En_Proceso",
-                datos_extra=datos_extra,
-                notas=datos.get("notas"),
-                foto_url=foto_url,
-                foto_timestamp=datos.get("foto_timestamp"),
-                sesion_iniciada_at=datos.get("sesion_iniciada_at"),
-            )
+        try:
+            with transaction.atomic():
+                formulario = FormularioDinamico.objects.create(
+                    visit=visit,
+                    tipo_formulario="Tarea_En_Proceso",
+                    datos_extra=datos_extra,
+                    notas=datos.get("notas"),
+                    foto_url=foto_url,
+                    foto_timestamp=datos.get("foto_timestamp"),
+                    sesion_iniciada_at=datos.get("sesion_iniciada_at"),
+                    client_submission_id=datos.get("client_submission_id"),
+                )
 
-            completar_data = {}
-            if datos.get("real_minutes") is not None:
-                completar_data["real_minutes"] = datos["real_minutes"]
-            if datos.get("notas"):
-                completar_data["notas"] = datos["notas"]
-            completar = CompletarParadaSerializer(
-                data=completar_data, context={"stop": stop}
-            )
-            completar.is_valid(raise_exception=True)
-            completar.save()
+                completar_data = {}
+                if datos.get("real_minutes") is not None:
+                    completar_data["real_minutes"] = datos["real_minutes"]
+                if datos.get("notas"):
+                    completar_data["notas"] = datos["notas"]
+                completar = CompletarParadaSerializer(
+                    data=completar_data, context={"stop": stop}
+                )
+                completar.is_valid(raise_exception=True)
+                completar.save()
+        except IntegrityError:
+            # Carrera de doble envío con el mismo client_submission_id: el
+            # unique de BD gana; devolver el resultado del primer envío.
+            # Mismo scoping por dueño que el chequeo pre-guard.
+            existente = FormularioDinamico.objects.filter(
+                client_submission_id=datos.get("client_submission_id"),
+                visit__replenisher=request.user,
+            ).first()
+            if existente:
+                stop.refresh_from_db()
+                return self._respuesta_duplicado(existente, stop)
+            raise
 
         return Response(
             {
@@ -309,6 +361,65 @@ class TareaEnProcesoView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class EventoRespuestaBatchView(APIView):
+    """
+    Recibe un lote de eventos de respuesta: {"eventos": [ {...}, ... ]}.
+    Idempotente: eventos con id ya existente se cuentan como duplicados y se
+    ignoran. Siempre responde 200 con conteos para que la app pueda vaciar su
+    cola offline (los items inválidos van en `errores`, no tumban el lote).
+    """
+    permission_classes = [IsAuthenticated]
+
+    MAX_EVENTOS_POR_LOTE = 100
+
+    def post(self, request):
+        eventos = request.data.get("eventos")
+        if not isinstance(eventos, list) or not eventos:
+            raise ValidationError({"eventos": "Se espera una lista no vacía de eventos."})
+        if len(eventos) > self.MAX_EVENTOS_POR_LOTE:
+            raise ValidationError(
+                {"eventos": f"Máximo {self.MAX_EVENTOS_POR_LOTE} eventos por lote."}
+            )
+
+        creados, duplicados, errores = 0, 0, []
+        for item in eventos:
+            ser = EventoRespuestaSerializer(data=item)
+            if not ser.is_valid():
+                item_id = item.get("id") if isinstance(item, dict) else None
+                errores.append({"id": item_id, "detalle": ser.errors})
+                continue
+
+            vd = ser.validated_data
+            stop = vd["route_stop"]
+            if stop.route.replenisher != request.user:
+                errores.append({"id": str(vd["id"]), "detalle": "No tienes acceso a esta parada."})
+                continue
+
+            lat = vd.pop("latitud", None)
+            lng = vd.pop("longitud", None)
+            punto = Point(lng, lat, srid=4326) if lat is not None and lng is not None else None
+
+            defaults = {k: v for k, v in vd.items() if k != "id"}
+            defaults["pdv"] = stop.pdv
+            defaults["replenisher"] = request.user
+            defaults["geoposicion"] = punto
+            try:
+                _, creado = EventoRespuesta.objects.get_or_create(id=vd["id"], defaults=defaults)
+            except IntegrityError:
+                creado = False  # carrera con otro envío del mismo evento
+            if creado:
+                creados += 1
+            else:
+                duplicados += 1
+
+        return Response({
+            "status": "success",
+            "creados": creados,
+            "duplicados": duplicados,
+            "errores": errores,
+        })
 
 
 class OmitirParadaView(APIView):

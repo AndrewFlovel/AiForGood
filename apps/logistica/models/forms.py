@@ -42,6 +42,10 @@ class FormularioDinamico(models.Model):
     # Timestamp del inicio de sesión del usuario (enviado por la app)
     sesion_iniciada_at = models.DateTimeField(null=True, blank=True)
 
+    # Idempotencia de reenvíos offline: UUID generado por el cliente.
+    # unique + null: Postgres permite múltiples NULL, los registros legacy no chocan.
+    client_submission_id = models.UUIDField(null=True, blank=True, unique=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -12,6 +12,7 @@ import { Heading, BodyText, Caption } from '../components/StyledText';
 import AppButton from '../components/AppButton';
 import { useApi } from '../hooks/useApi';
 import { getSecureLocation } from '../hooks/useSecureLocation';
+import { useSincronizacion } from '../context/SincronizacionContext';
 
 const STATUS_CONFIG = {
   pending:     { label: 'PENDIENTE',   color: colors.outlineVariant },
@@ -22,6 +23,7 @@ const STATUS_CONFIG = {
 
 export default function HomeScreen({ navigation }) {
   const { apiFetch } = useApi();
+  const { stopsPendientes } = useSincronizacion() ?? { stopsPendientes: [] };
   const [ruta, setRuta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(null); // stop_id en proceso
@@ -147,13 +149,20 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {isInProgress && (
-          <AppButton
-            title="REGISTRAR Y COMPLETAR"
-            variant="success"
-            onPress={() => navigation.navigate('TareaEnProceso', { stop })}
-          />
-        )}
+        {isInProgress &&
+          (stopsPendientes.includes(stop.id) ? (
+            // La tarea ya está encolada offline: bloquear el reingreso al
+            // formulario mientras el servidor aún la ve "en progreso".
+            <View style={styles.syncPendingBadge}>
+              <Caption style={styles.syncPendingText}>📦 SINCRONIZACIÓN PENDIENTE</Caption>
+            </View>
+          ) : (
+            <AppButton
+              title="REGISTRAR Y COMPLETAR"
+              variant="success"
+              onPress={() => navigation.navigate('TareaEnProceso', { stop })}
+            />
+          ))}
       </View>
     );
   }
@@ -266,4 +275,20 @@ const styles = StyleSheet.create({
   actionFlex: { flex: 1 },
   btnOmitir: { borderColor: colors.error, paddingHorizontal: SPACING.lg },
   btnOmitirText: { color: colors.error },
+
+  syncPendingBadge: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderStyle: 'dashed',
+    borderRadius: RADIUS.sm,
+    paddingVertical: SPACING.sm + 2,
+    alignItems: 'center',
+  },
+  syncPendingText: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.xs,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.5,
+  },
 });

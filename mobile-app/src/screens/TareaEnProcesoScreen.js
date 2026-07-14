@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, TextInput, TouchableOpacity, StyleSheet,
   Alert, ScrollView, Image,
@@ -10,14 +10,25 @@ import { colors, SPACING, FONT_SIZES, FONTS, RADIUS, shadow } from '../theme';
 import { commonStyles } from '../theme/commonStyles';
 import { Heading, BodyText, Caption, Label } from '../components/StyledText';
 import AppButton from '../components/AppButton';
-import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
+import { useConnectivity } from '../hooks/useConnectivity';
+import { useRegistroEventos } from '../hooks/useRegistroEventos';
+import { useSincronizacion } from '../context/SincronizacionContext';
+import { encolar, limpiarBorradorEventos, stopsConTareaPendiente } from '../services/outbox';
+import { persistirFoto } from '../services/fotosOutbox';
+import { generarUUID } from '../utils/uuid';
 import { CAMPOS_ADICIONALES } from '../constants/formSchema';
+
+// Las notas también se auditan como pregunta, con el mismo debounce de texto
+const CAMPO_NOTAS = { key: 'notas', label: 'Notas', type: 'text' };
 
 export default function TareaEnProcesoScreen({ route, navigation }) {
   const { stop } = route.params;
-  const { apiFetch } = useApi();
   const { loginTimestamp } = useAuth();
+  const { isOnline } = useConnectivity();
+  const { sincronizarAhora } = useSincronizacion();
+  const { registrarRespuesta, registrarFoto, finalizarEventos, datosIniciales } =
+    useRegistroEventos(stop);
 
   const [photo, setPhoto] = useState(null);
   const [fotoTimestamp, setFotoTimestamp] = useState(null);
@@ -25,8 +36,18 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
   const [datos, setDatos] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  function setCampo(key, value) {
-    setDatos((prev) => ({ ...prev, [key]: value }));
+  // Idempotencia: un solo id por intento de tarea, aunque se reintente
+  const clientSubmissionIdRef = useRef(null);
+  const fotoPersistidaRef = useRef(null);
+
+  // Rehidratar respuestas desde el borrador (recuperación tras crash)
+  useEffect(() => {
+    if (datosIniciales) setDatos((prev) => ({ ...datosIniciales, ...prev }));
+  }, [datosIniciales]);
+
+  function setCampo(campo, value) {
+    setDatos((prev) => ({ ...prev, [campo.key]: value }));
+    registrarRespuesta(campo, value); // asíncrono, no bloquea la UI
   }
 
   // Comprobante visual: SOLO cámara (nunca galería ni descargas)
@@ -44,11 +65,17 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
     });
 
     if (!result.canceled && result.assets?.length) {
-      setPhoto(result.assets[0].uri);
-      setFotoTimestamp(new Date().toISOString());
+      const uri = result.assets[0].uri;
+      const ts = new Date().toISOString();
+      setPhoto(uri);
+      setFotoTimestamp(ts);
+      registrarFoto(uri, ts);
     }
   }
 
+  // Encolar-primero: la tarea y sus eventos SIEMPRE pasan por el outbox.
+  // Con conexión se sincroniza al instante; sin conexión queda guardado en el
+  // teléfono y el sincronizador lo envía al recuperar señal. Nada se pierde.
   async function enviarTarea() {
     if (!photo) {
       Alert.alert('Falta comprobante', 'Debes tomar una foto del estado del stock para continuar.');
@@ -57,32 +84,46 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
 
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('foto', {
-        uri: photo,
-        type: 'image/jpeg',
-        name: `tarea-${stop.id}-${Date.now()}.jpg`,
-      });
-      formData.append('notas', notas);
-      formData.append('datos_extra', JSON.stringify(datos));
-      if (fotoTimestamp) formData.append('foto_timestamp', fotoTimestamp);
-      if (loginTimestamp) formData.append('sesion_iniciada_at', loginTimestamp);
+      if (!clientSubmissionIdRef.current) clientSubmissionIdRef.current = generarUUID();
 
-      const res = await apiFetch(`/api/logistica/paradas/${stop.id}/tarea/`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        Alert.alert('Error', data.mensaje || data.detail || JSON.stringify(data));
-        return;
+      // 1. Copiar la foto fuera del cache (el OS puede purgarlo)
+      if (!fotoPersistidaRef.current) {
+        fotoPersistidaRef.current = await persistirFoto(photo, stop.id);
       }
 
-      Alert.alert('✅ Parada completada', 'La evidencia se registró correctamente.', [
-        { text: 'OK', onPress: () => navigation.navigate('Home') },
-      ]);
+      // 2. Encolar eventos por pregunta + tarea completa
+      const eventos = finalizarEventos();
+      if (eventos.length) await encolar('eventos', eventos);
+      await encolar('tarea', {
+        stopId: stop.id,
+        fotoPath: fotoPersistidaRef.current,
+        notas,
+        datosExtra: datos,
+        fotoTimestamp,
+        sesionIniciadaAt: loginTimestamp,
+        clientSubmissionId: clientSubmissionIdRef.current,
+      });
+      await limpiarBorradorEventos(stop.id);
+
+      // 3. Si hay conexión, intentar el envío inmediato
+      let sincronizado = false;
+      if (isOnline) {
+        await sincronizarAhora();
+        const stopsPendientes = await stopsConTareaPendiente();
+        sincronizado = !stopsPendientes.includes(stop.id);
+      }
+
+      if (sincronizado) {
+        Alert.alert('✅ Parada completada', 'La evidencia se registró correctamente.', [
+          { text: 'OK', onPress: () => navigation.navigate('Home') },
+        ]);
+      } else {
+        Alert.alert(
+          '📦 Guardado sin conexión',
+          'Tus respuestas quedaron guardadas en el teléfono y se enviarán automáticamente al recuperar la conexión.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
+        );
+      }
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
@@ -102,7 +143,7 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
               <TouchableOpacity
                 key={op}
                 style={[styles.pill, activo && styles.pillActive]}
-                onPress={() => setCampo(campo.key, op)}
+                onPress={() => setCampo(campo, op)}
                 activeOpacity={0.8}
               >
                 <Caption style={[styles.pillText, activo && styles.pillTextActive]}>{op}</Caption>
@@ -122,7 +163,7 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
               <TouchableOpacity
                 key={l}
                 style={[styles.pill, activo && styles.pillActive]}
-                onPress={() => setCampo(campo.key, v)}
+                onPress={() => setCampo(campo, v)}
                 activeOpacity={0.8}
               >
                 <Caption style={[styles.pillText, activo && styles.pillTextActive]}>{l}</Caption>
@@ -140,7 +181,7 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
         placeholder={campo.label}
         placeholderTextColor={colors.outlineVariant}
         value={valor != null ? String(valor) : ''}
-        onChangeText={(t) => setCampo(campo.key, campo.type === 'number' ? t.replace(/[^0-9.]/g, '') : t)}
+        onChangeText={(t) => setCampo(campo, campo.type === 'number' ? t.replace(/[^0-9.]/g, '') : t)}
         keyboardType={campo.type === 'number' ? 'numeric' : 'default'}
       />
     );
@@ -190,7 +231,10 @@ export default function TareaEnProcesoScreen({ route, navigation }) {
             placeholder="Observaciones de la visita..."
             placeholderTextColor={colors.outlineVariant}
             value={notas}
-            onChangeText={setNotas}
+            onChangeText={(t) => {
+              setNotas(t);
+              registrarRespuesta(CAMPO_NOTAS, t);
+            }}
             multiline
             numberOfLines={4}
           />

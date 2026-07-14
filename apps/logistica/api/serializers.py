@@ -5,7 +5,7 @@ from django.db.models import F
 from django.db.models.functions import Coalesce
 from apps.logistica.models import (
     RouteStop, Visit, FormularioDinamico, ProductoExterno, Route, RestockRequest,
-    PDV, Market, ClientType,
+    PDV, Market, ClientType, EventoRespuesta,
 )
 from apps.logistica.services.geofencing import GeofencingService
 from django.utils import timezone
@@ -169,6 +169,33 @@ class TareaEnProcesoSerializer(serializers.Serializer):
     foto_timestamp = serializers.DateTimeField(required=False, allow_null=True)
     sesion_iniciada_at = serializers.DateTimeField(required=False, allow_null=True)
     real_minutes = serializers.IntegerField(required=False, min_value=0)
+    # Idempotencia de reenvíos offline: UUID generado por el cliente
+    client_submission_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class EventoRespuestaSerializer(serializers.ModelSerializer):
+    """
+    Un evento de respuesta del formulario (auditoría por pregunta).
+    El `id` lo genera el cliente: la vista hace get_or_create para que los
+    reenvíos offline sean idempotentes.
+    """
+    # Explícito: DRF marca el pk como read-only por defecto
+    id = serializers.UUIDField()
+    route_stop = serializers.PrimaryKeyRelatedField(
+        queryset=RouteStop.objects.select_related("route", "pdv")
+    )
+    # La geoposición llega como lat/lng planos; la vista construye el Point
+    latitud = serializers.FloatField(write_only=True, required=False, allow_null=True)
+    longitud = serializers.FloatField(write_only=True, required=False, allow_null=True)
+
+    class Meta:
+        model = EventoRespuesta
+        fields = [
+            "id", "route_stop", "pregunta_key", "pregunta_descripcion", "valor",
+            "answered_at", "latitud", "longitud", "foto_local", "entidad_nombre",
+            "ultimo_chequeo", "creado_en",
+        ]
+        read_only_fields = ["creado_en"]
 
 
 class RestockRequestSerializer(serializers.ModelSerializer):

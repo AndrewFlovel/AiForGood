@@ -14,6 +14,7 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { SincronizacionProvider } from './src/context/SincronizacionContext';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
@@ -43,17 +44,21 @@ function AppNavigator() {
 
   // Área autenticada: la SessionBar es hermana del navegador (no lo solapa)
   // y queda visible de forma persistente en todas las pantallas.
+  // SincronizacionProvider procesa el outbox offline al montar (login/arranque)
+  // y en cada recuperación de conexión.
   return (
-    <View style={{ flex: 1 }}>
+    <SincronizacionProvider>
       <View style={{ flex: 1 }}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Map" component={MapScreen} />
-          <Stack.Screen name="TareaEnProceso" component={TareaEnProcesoScreen} />
-        </Stack.Navigator>
+        <View style={{ flex: 1 }}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Map" component={MapScreen} />
+            <Stack.Screen name="TareaEnProceso" component={TareaEnProcesoScreen} />
+          </Stack.Navigator>
+        </View>
+        <SessionBar />
       </View>
-      <SessionBar />
-    </View>
+    </SincronizacionProvider>
   );
 }
 

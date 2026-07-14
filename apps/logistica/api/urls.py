@@ -7,6 +7,7 @@ from .views import (
     IniciarRutaView,
     CompletarParadaView,
     TareaEnProcesoView,
+    EventoRespuestaBatchView,
     OmitirParadaView,
     RestockRequestCreateView,
     SupervisorDashboardView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("paradas/<uuid:stop_id>/completar/", CompletarParadaView.as_view(), name="api_logistica_parada_completar"),
     path("paradas/<uuid:stop_id>/tarea/", TareaEnProcesoView.as_view(), name="api_logistica_parada_tarea"),
     path("paradas/<uuid:stop_id>/omitir/", OmitirParadaView.as_view(), name="api_logistica_parada_omitir"),
+    path("eventos-respuesta/", EventoRespuestaBatchView.as_view(), name="api_logistica_eventos_respuesta"),
     path("restock/", RestockRequestCreateView.as_view(), name="api_logistica_restock"),
     path("supervisor/dashboard/", SupervisorDashboardView.as_view(), name="api_logistica_dashboard"),
 
