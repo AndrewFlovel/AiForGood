@@ -1,7 +1,7 @@
 # Estado de la App Móvil — Venado Logística
 
-> Última actualización: 2026-05-31
-> Stack: Expo SDK 56 · React Native · @react-navigation/native-stack · dev build (NO Expo Go)
+> Última actualización: 2026-07-16
+> Stack: Expo SDK 57 · React Native · @react-navigation/native-stack · dev build (NO Expo Go)
 
 ---
 
@@ -160,11 +160,44 @@ npx eas build --profile development --platform android
 ```
 Instalar el APK desde el enlace que entrega EAS (desinstalar el viejo primero).
 
-> ⚠️ **Rebuild pendiente:** se agregó `expo-network` (indicador de conexión de la barra
-> de sesión). El dev build actual **no lo incluye** → el hook `useConnectivity` es
-> defensivo y asumirá *"en línea"* hasta regenerar el APK. **Regenerar el dev build antes
-> de validar la conectividad** (modo avión, etc.). El resto de la barra de sesión
-> (identidad, cronómetro, "Finalizar jornada") funciona solo con recargar el bundle JS.
+> ⚠️ **Rebuild pendiente (superado por el upgrade a SDK 57, ver §11):** el dev build
+> instalado en el dispositivo fue compilado contra el ABI nativo de SDK 56 y **no cargará**
+> un bundle JS de SDK 57 — no es solo `expo-network`, ahora es todo el set de módulos
+> nativos. **Regenerar el dev build es obligatorio antes de cualquier prueba en
+> dispositivo** (no solo para validar conectividad).
+
+### 🗺️ Mapa gris en "Ver mapa" — troubleshooting
+
+Síntoma: `MapScreen` aparece **todo gris** con el botón de diana (My Location) visible,
+pero los *tiles* de Google nunca cargan (Android). El `MapView` se monta bien (por eso
+ves el control) → el problema es la **autenticación del SDK nativo de Google Maps**, no
+el código.
+
+Causas y orden de arreglo:
+
+1. **Habilitar "Maps SDK for Android"** en Google Cloud (la causa más común).
+   `console.cloud.google.com` → proyecto de la key → **APIs y servicios → Biblioteca →
+   "Maps SDK for Android" → Habilitar**. Esperar 2–5 min y reabrir el mapa.
+   > Ojo: **Directions API ≠ Maps SDK for Android** son APIs distintas. La key puede
+   > funcionar para la ruta (Directions, llamada HTTP en `api.js`) y aun así dar el mapa
+   > gris si Maps SDK for Android está deshabilitado. Verificado: la Directions API
+   > responde `status: OK` con la key actual → billing OK, key válida.
+
+2. **Regenerar el dev build si el APK es viejo.** La key
+   (`app.json → android.config.googleMaps.apiKey`) se **hornea en el `AndroidManifest`
+   en build-time**; recargar el JS no la agrega. Si el APK instalado se compiló antes de
+   tener la key → mapa gris hasta hacer `eas build --profile development --platform android`
+   y reinstalar.
+
+3. **Restricciones de la key (seguridad).** La key está hoy *sin restricción* y commiteada.
+   Al restringirla, recordar: una key restringida a *"Aplicaciones Android"* sirve al SDK
+   nativo **pero NO** a la llamada HTTP de Directions (`api.js`) → la rompe. Solución:
+   **dos keys** — una Android (package `com.andrewflovel.venadologistica` + SHA‑1 del
+   keystore vía `npx eas credentials`) y otra web restringida por API/IP para Directions.
+
+Diagnóstico fino: `adb logcat | grep -i "Google Maps\|Authorization"` al abrir el mapa
+muestra el mensaje exacto (p.ej. *"ensure that the Maps SDK for Android is enabled"*) y el
+`SHA-1;package` que GCP espera.
 
 ---
 
@@ -191,8 +224,33 @@ cd mobile-app && npx eas build --profile development --platform android
 - [x] Resolver conexión del teléfono → **vía túnel** (Metro + backend por loca.lt).
 - [x] Dev build actualizado con cámara (EAS Android, build 79dd7e26).
 - [ ] Prueba end-to-end del flujo "Tarea en Proceso" en dispositivo (instalar APK nuevo).
+- [ ] **Mapa gris**: habilitar "Maps SDK for Android" en GCP (+ rebuild si el APK no trae la key). Ver §7 troubleshooting.
 - [ ] (Opcional) Túnel con dominio fijo para no re-pegar `TUNNEL_URL` cada sesión.
 - [ ] (Opcional) Mover el schema de "datos adicionales" a un endpoint del supervisor.
+- [ ] **Rebuild dev-client para SDK 57** (ver §11) antes de cualquier prueba en dispositivo.
+- [ ] Revisar si `RECORD_AUDIO` (nuevo, ver §11) debe suprimirse en `expo-image-picker`.
 
 ## 10. Nuevo Plan: Sesiones Offline
 Se ha creado el documento `PLAN_SESION_OFFLINE.md` que detalla la arquitectura offline-first, sesiones sin expiración y registro silencioso de actividades en formato JSON para la futura migración a Supabase.
+
+---
+
+## 11. Sesión 2026-07-16 — Upgrade a Expo SDK 57
+
+- `expo` 56.0.9 → 57.x, `react-native` 0.85.3 → 0.86.0, `react` sin cambios (19.2.3). Todos
+  los paquetes `expo-*` actualizados a sus versiones compatibles con SDK 57 vía
+  `npx expo install expo@57 --fix`. `react-native-maps`/`screens`/`safe-area-context`/
+  `async-storage` ya eran compatibles, sin cambios.
+- `app.json → plugins`: el instalador agregó automáticamente `expo-font` y
+  `expo-status-bar` — nuevo requisito de SDK 57, no manual.
+- `npx expo-doctor`: 19/20 checks OK. El único check fallido (`eas-cli` no debería ser
+  dependencia del proyecto) es preexistente, no relacionado al upgrade.
+- ⚠️ **Nuevo permiso detectado**: el manifest ahora pide `android.permission.RECORD_AUDIO`,
+  no presente antes del upgrade. Probablemente viene de `expo-image-picker@~57.0.2`
+  (soporte de video en el picker) arrastrado por el bump de SDK, no agregado a propósito.
+  Revisar si conviene suprimirlo vía config del plugin `expo-image-picker` en `app.json`
+  si la app solo necesita fotos.
+- Sesión de EAS **sí está autenticada** en esta máquina (`andrewflovel` /
+  andrew.flovel@gmail.com) — `npx eas build --profile development --platform android` se
+  puede ejecutar directamente sin login adicional.
+- Ver §7 "Rebuild pendiente" — aplica para SDK 57, no solo `expo-network`.

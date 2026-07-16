@@ -47,7 +47,9 @@
         {
           "cameraPermission": "Venaris necesita la cámara para el comprobante visual de stock."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

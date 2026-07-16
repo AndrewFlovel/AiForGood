@@ -11,7 +11,7 @@ const TUNNEL_URL = '';
 
 // IP LAN de la máquina de desarrollo (Django corre en :8001).
 // Usada solo cuando NO hay túnel y el teléfono está en la misma WiFi.
-const LAN_IP = '192.168.1.104';
+const LAN_IP = '192.168.9.153';
 
 function resolverBackend() {
   // 1. Si hay túnel configurado, tiene prioridad (funciona desde cualquier red).
