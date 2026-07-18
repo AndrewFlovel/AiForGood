@@ -24,6 +24,7 @@
 - [Stack Tecnológico](#-stack-tecnológico)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Instalación y Ejecución](#️-instalación-y-ejecución)
+- [Despliegue Público](#-despliegue-público)
 - [API Reference](#-api-reference)
 - [Modelos de Datos](#️-modelos-de-datos)
 - [Autenticación](#-autenticación)
@@ -193,6 +194,21 @@ cd frontend && npm install && npm run dev
 ```bash
 cd mobile-app && npm install && npm run start
 ```
+
+---
+
+## 🌐 Despliegue Público
+
+Además del entorno local, la plataforma puede exponerse públicamente en internet para demos fuera de la red local:
+
+| Componente | Plataforma | Notas |
+|---|---|---|
+| Base de datos | Supabase (Postgres + PostGIS) | reemplaza el contenedor `db` local |
+| Backend Django | Self-hosted + Cloudflare Tunnel | túnel persistente, sin exponer puertos |
+| Dashboard Web | Cloudflare Pages | build automático desde el repo |
+| App Móvil | EAS Build (Expo) | build interno, distribución vía link |
+
+Guía paso a paso completa (incluye comandos de `cloudflared`, configuración de Supabase y variables de entorno de cada componente) en **[SETUP.md — §7 Despliegue Público](./SETUP.md#-7-despliegue-público-producción--demo)**.
 
 ---
 

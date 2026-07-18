@@ -12,8 +12,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'default-unsafe-secret-key')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
+    h.strip()
+    for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
 ]
 
 # En desarrollo aceptamos cualquier host (IP LAN, dominios de túnel ngrok/cloudflared,
